@@ -34,6 +34,18 @@ class MyItemResponse(BaseModel):
         from_attributes = True
     
 
+class OrderResponse(BaseModel):
+    username: str
+    item : str
+    quantity: int
+
+    class Config:
+        from_attributes = True
+
+
+
+
+
 def create_db_and_tables():
     Base.metadata.create_all(engine)
     print("Database and tables created successfully.")
@@ -135,3 +147,11 @@ async def return_item(item_id:int , quantity:int, session:Session = Depends(get_
         session.delete(exist_order)
     session.flush()
     return {"message": f"تعداد {quantity} عدد از {item.name} با موفقیت مرجوع شد."}
+
+
+@app.get("/order/{order_id}",response_model=OrderResponse)
+async def get_order(order_id:int,session:Session = Depends(Session)) -> OrderResponse:
+    order = session.query(UserItem).get(order_id)
+    if not  order:  
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="سفارش موجود نیست.")
+    return {"username": order.user.username, "item": order.item.name, "quantity": order.quantity}

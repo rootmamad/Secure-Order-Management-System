@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship
 class UserItem(Base):
     __tablename__ = "user_items"
     
+    id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     item_id = Column(Integer, ForeignKey("Items.id"), primary_key=True)
     quantity = Column(Integer, default=1)
