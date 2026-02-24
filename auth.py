@@ -18,6 +18,8 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    balance: int
+
 
 
 class UserRead(UserBase):
@@ -52,7 +54,7 @@ async def register(user: UserCreate, session: Session = Depends(get_session)) ->
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
     
     hashed_password = await create_hash(user.password)
-    db_user = Users(username=user.username, full_name=user.full_name, hashed_password=hashed_password)
+    db_user = Users(username=user.username, full_name=user.full_name, hashed_password=hashed_password,balance=user.balance)
     session.add(db_user)
     session.flush()
     session.refresh(db_user)
@@ -93,7 +95,7 @@ async def login(user: UserLogin, session: Session = Depends(get_session)) -> Log
     session.refresh(db_refresh_token)
     access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": False}, secret_key, algorithm)  
     return {
-        "tokens": {
+        "token": {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer"

@@ -16,7 +16,7 @@ async def create_token(data: dict, secret_key: str, algorithm: str) -> str:
     if data.get("is_refresh"):
         expire = datetime.utcnow() + timedelta(days=7)
     else:
-        expire = datetime.utcnow() + timedelta(minutes=1)
+        expire = datetime.utcnow() + timedelta(minutes=15)
     
     to_encode.update({"exp": expire})
     
