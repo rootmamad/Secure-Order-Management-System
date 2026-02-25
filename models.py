@@ -6,9 +6,9 @@ from sqlalchemy.orm import relationship
 class UserItem(Base):
     __tablename__ = "user_items"
     
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    item_id = Column(Integer, ForeignKey("Items.id"), primary_key=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("Items.id"), nullable=False)
     quantity = Column(Integer, default=1)
     
     user = relationship("Users", back_populates="purchased_items")
