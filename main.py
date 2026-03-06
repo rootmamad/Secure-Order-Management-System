@@ -54,13 +54,13 @@ def create_db_and_tables():
 
 
 
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
+# @app.on_event("startup")
+# def on_startup():
+#     create_db_and_tables()
 
 
 @app.post("/create/" , response_model=Item)
-def create_hero(hero: Item, session: Session=Depends(get_session)) -> Item:
+def create_hero(hero: Item, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
     db_hero  = Items(**hero.model_dump())
     session.add(db_hero)
 
@@ -70,13 +70,20 @@ def create_hero(hero: Item, session: Session=Depends(get_session)) -> Item:
 
 @app.get("/item/{item_id}", response_model=Item)
 async def read_item(item_id: int, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
+
     item = session.get(Items, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="این محصول موجود نیست")
+
     return item
 
 
 @app.get("/items/", response_model=list[Item])
 async def read_items(session: Session=Depends(get_session),dependency=Depends(access)) -> list[Item]:
     items = session.query(Items).all()
+    if not items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=" محصولی موجود نیست")
+
     return items
 
 @app.post("/item/{item_id}/buy")
@@ -110,7 +117,7 @@ async def buy(item_id:int , quantity:int , session:Session=Depends(get_session),
 
 
 @app.post("/delete/",response_model=Item)
-async def delete(item_id: int, session: Session=Depends(get_session)) -> Item:
+async def delete(item_id: int, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
     item = session.get(Items, item_id)
     if item:
         session.delete(item)
@@ -120,6 +127,10 @@ async def delete(item_id: int, session: Session=Depends(get_session)) -> Item:
 @app.get("/myitem",response_model=list[MyItemResponse])
 async def myitem(session: Session=Depends(get_session),current_user=Depends(access)) :
     items = session.query(UserItem).options(joinedload(UserItem.item)).filter(UserItem.user_id == current_user["user_id"]).all()
+    
+    if not items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=" محصولی موجود نیست")
+
     return items
 
 @app.post("/item/{item_id}/return")
