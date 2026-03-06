@@ -162,7 +162,10 @@ async def return_item(item_id:int , quantity:int, session:Session = Depends(get_
 
 @app.get("/order/{order_id}",response_model=OrderResponse)
 async def get_order(order_id:int,session:Session = Depends(get_session),current_user=Depends(access)) -> OrderResponse:
-    order = session.query(UserItem).get(order_id)
+    order = session.query(UserItem).filter(
+    UserItem.id == order_id, 
+    UserItem.user_id == current_user["user_id"]
+            ).first()
     if not  order:  
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="سفارش موجود نیست.")
     return {"username": order.user.username, "item": order.item.name, "quantity": order.quantity}
