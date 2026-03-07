@@ -1,4 +1,5 @@
-from fastapi import FastAPI , Depends ,HTTPException, status
+from fastapi import FastAPI , Depends ,HTTPException, status,Request
+from fastapi.responses import JSONResponse
 from  pydantic import BaseModel
 from database import get_session, Base, engine
 from models import Items,Users ,UserItem
@@ -11,6 +12,17 @@ app = FastAPI()
 
 access = JWTBearer()
 app.include_router(router)
+
+@app.exception_handler(Exception)
+async def handle_error(request:Request,exception:Exception):
+    print(f"CRITICAL ERROR on {request.url.path}: {exception}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An internal server error occurred. Please try again later."}
+    )
+
+
+
 
 class Item(BaseModel):
     name: str
