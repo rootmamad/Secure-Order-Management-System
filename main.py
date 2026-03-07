@@ -16,6 +16,8 @@ class Item(BaseModel):
     name: str
     price: float
     quantity: int
+    class Config:
+        from_attributes = True
 
 
 class ItemInfo(BaseModel):
@@ -79,8 +81,8 @@ async def read_item(item_id: int, session: Session=Depends(get_session),dependen
 
 
 @app.get("/items/", response_model=list[Item])
-async def read_items(session: Session=Depends(get_session),dependency=Depends(access)) -> list[Item]:
-    items = session.query(Items).all()
+async def read_items(limit:int=10, offset:int =0 ,session: Session=Depends(get_session), dependency=Depends(access)) -> list[Item]:
+    items = session.query(Items).offset(offset).limit(limit).all()
     if not items:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=" محصولی موجود نیست")
 
