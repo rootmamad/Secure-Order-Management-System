@@ -60,13 +60,13 @@ def create_db_and_tables():
 
 
 @app.post("/create/" , response_model=Item)
-def create_hero(hero: Item, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
-    db_hero  = Items(**hero.model_dump())
-    session.add(db_hero)
+def create_item(item: Item, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
+    db_item  = Items(**item.model_dump())
+    session.add(db_item)
 
     session.flush()
-    session.refresh(db_hero)
-    return db_hero
+    session.refresh(db_item)
+    return db_item
 
 @app.get("/item/{item_id}", response_model=Item)
 async def read_item(item_id: int, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
