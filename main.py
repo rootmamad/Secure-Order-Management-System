@@ -155,9 +155,7 @@ async def get_all_users(session: Session = Depends(get_session),current_user: di
     return users
 
 @app.patch("/users/role/{user_id}")
-async def update_role(user_id:int,request:RoleUpdateRequest,session:Session =Depends(get_session),current_user:dict=Depends(require_admin_role)):
-    print("jh",request,"ssssssssssssssss")
-    
+async def update_role(user_id:int,request:RoleUpdateRequest,session:Session =Depends(get_session),current_user:dict=Depends(require_admin_role)):    
     if request.role not in ["customer","staff","admin"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="role is invalid.")
     user = session.query(Users).filter(Users.id == user_id).first()
@@ -205,10 +203,14 @@ async def return_item(item_id:int , quantity:int, session:Session = Depends(get_
 
 @app.get("/order/{order_id}",response_model=OrderResponse)
 async def get_order(order_id:int,session:Session = Depends(get_session),current_user=Depends(access)) -> OrderResponse:
-    order = session.query(UserItem).filter(
-    UserItem.id == order_id, 
-    UserItem.user_id == current_user["user_id"]
-            ).first()
+    order = session.query(UserItem).filter(UserItem.id == order_id)
+
+    if current_user["role"] == "customer":
+        order = order.filter(UserItem.user_id == current_user["user_id"])
+        
+    order = order.first()
+
     if not  order:  
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="سفارش موجود نیست.")
+    
     return {"username": order.user.username, "item": order.item.name, "quantity": order.quantity}
