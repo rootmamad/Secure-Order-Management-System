@@ -33,6 +33,7 @@ class Users(Base):
     hashed_password = Column(String)
     balance = Column(Integer,default=0)
     purchased_items = relationship("UserItem", back_populates="user")
+    role = Column(String,default="customer")
 
     
 class RefreshTokens(Base):

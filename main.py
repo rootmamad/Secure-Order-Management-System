@@ -4,9 +4,8 @@ from  pydantic import BaseModel
 from database import get_session, Base, engine
 from models import Items,Users ,UserItem
 from sqlalchemy.orm import Session , joinedload
-from dependencies import JWTBearer
+from dependencies import JWTBearer,require_admin_role,require_staff_role
 from auth import router 
-from typing import List
 
 app = FastAPI()
 
@@ -57,6 +56,19 @@ class OrderResponse(BaseModel):
         from_attributes = True
 
 
+class UserResponse(BaseModel):
+    id:int
+    username: str
+    full_name:str
+    balance:int
+    role:str
+
+    class Config:
+        from_attributes = True
+
+class RoleUpdateRequest(BaseModel):
+    role: str
+
 
 
 
@@ -74,7 +86,7 @@ def create_db_and_tables():
 
 
 @app.post("/create/" , response_model=Item)
-def create_item(item: Item, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
+def create_item(item: Item, session: Session=Depends(get_session),dependency=Depends(require_staff_role)) -> Item:
     db_item  = Items(**item.model_dump())
     session.add(db_item)
 
@@ -131,12 +143,29 @@ async def buy(item_id:int , quantity:int , session:Session=Depends(get_session),
 
 
 @app.post("/delete/",response_model=Item)
-async def delete(item_id: int, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
+async def delete(item_id: int, session: Session=Depends(get_session),dependency=Depends(require_staff_role)) -> Item:
     item = session.get(Items, item_id)
     if item:
         session.delete(item)
     return item
 
+@app.get("/users/", response_model=list[UserResponse]) 
+async def get_all_users(session: Session = Depends(get_session),current_user: dict = Depends(require_admin_role)):
+    users = session.query(Users).all()
+    return users
+
+@app.patch("/users/role/{user_id}")
+async def update_role(user_id:int,request:RoleUpdateRequest,session:Session =Depends(get_session),current_user:dict=Depends(require_admin_role)):
+    print("jh",request,"ssssssssssssssss")
+    
+    if request.role not in ["customer","staff","admin"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="role is invalid.")
+    user = session.query(Users).filter(Users.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="user not found.")
+    user.role = request.role
+    session.flush()
+    return {"message": f"User {user.username} is now a {request.role}"}
 
 @app.get("/myitem",response_model=list[MyItemResponse])
 async def myitem(session: Session=Depends(get_session),current_user=Depends(access)) :

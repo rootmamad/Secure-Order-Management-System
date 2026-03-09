@@ -65,7 +65,7 @@ async def register(user: UserCreate, session: Session = Depends(get_session)) ->
     session.add(db_refresh_token)   
     session.flush()
     session.refresh(db_refresh_token)
-    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": False}, secret_key, algorithm)  
+    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, secret_key, algorithm)  
     return {
         "token": {
             "access_token": access_token,
@@ -93,7 +93,7 @@ async def login(user: UserLogin, session: Session = Depends(get_session)) -> Log
     session.add(db_refresh_token)   
     session.flush()
     session.refresh(db_refresh_token)
-    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": False}, secret_key, algorithm)  
+    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, secret_key, algorithm)  
     return {
         "token": {
             "access_token": access_token,
@@ -119,7 +119,7 @@ async def refresh_token(request: RefreshTokenRequest, session: Session = Depends
     user = session.query(Users).filter(Users.id == old_refresh_token.user_id).first()
     if not user:   
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    new_access_token = await create_token({"user_id": user.id,"username": user.username,"is_refresh": False}, secret_key, algorithm)  
+    new_access_token = await create_token({"user_id": user.id,"username": user.username,"role": user.role,"is_refresh": False}, secret_key, algorithm)  
     session.delete(old_refresh_token)
     session.flush()
     new_refresh_token = await create_token({"user_id": user.id,"username": user.username,"is_refresh": True}, secret_key, algorithm)
