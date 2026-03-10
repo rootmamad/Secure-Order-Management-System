@@ -113,9 +113,9 @@ async def read_items(limit:int=10, offset:int =0 ,session: Session=Depends(get_s
     return items
 
 @app.post("/item/{item_id}/buy")
-async def buy(item_id:int , quantity:int , session:Session=Depends(get_session),current_user=Depends(access)):
-    user = session.query(Users).filter(Users.id == current_user["user_id"]).first()
-    item = session.query(Items).filter(Items.id == item_id).first()
+def buy(item_id:int , quantity:int , session:Session=Depends(get_session),current_user=Depends(access)):
+    user = session.query(Users).filter(Users.id == current_user["user_id"]).with_for_update().first()
+    item = session.query(Items).filter(Items.id == item_id).with_for_update().first()
 
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="این محصول موجود نیست")
@@ -132,7 +132,7 @@ async def buy(item_id:int , quantity:int , session:Session=Depends(get_session),
     user.balance -= quantity * item.price
     item.quantity -= quantity
     
-    exist_item = session.query(UserItem).filter_by(item_id=item_id,user_id = user.id).first()
+    exist_item = session.query(UserItem).filter_by(item_id=item_id,user_id = user.id).with_for_update().first()
     if exist_item:
         exist_item.quantity += quantity
     else:
