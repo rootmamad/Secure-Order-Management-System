@@ -80,9 +80,6 @@ def create_db_and_tables():
 
 
 
-# @app.on_event("startup")
-# def on_startup():
-#     create_db_and_tables()
 
 
 @app.post("/create/" , response_model=Item)
@@ -95,7 +92,7 @@ def create_item(item: Item, session: Session=Depends(get_session),dependency=Dep
     return db_item
 
 @app.get("/item/{item_id}", response_model=Item)
-async def read_item(item_id: int, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
+def read_item(item_id: int, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
 
     item = session.get(Items, item_id)
     if not item:
@@ -105,7 +102,7 @@ async def read_item(item_id: int, session: Session=Depends(get_session),dependen
 
 
 @app.get("/items/", response_model=list[Item])
-async def read_items(limit:int=10, offset:int =0 ,session: Session=Depends(get_session), dependency=Depends(access)) -> list[Item]:
+def read_items(limit:int=10, offset:int =0 ,session: Session=Depends(get_session), dependency=Depends(access)) -> list[Item]:
     items = session.query(Items).offset(offset).limit(limit).all()
     if not items:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=" محصولی موجود نیست")
@@ -143,19 +140,19 @@ def buy(item_id:int , quantity:int , session:Session=Depends(get_session),curren
 
 
 @app.post("/delete/",response_model=Item)
-async def delete(item_id: int, session: Session=Depends(get_session),dependency=Depends(require_staff_role)) -> Item:
+def delete(item_id: int, session: Session=Depends(get_session),dependency=Depends(require_staff_role)) -> Item:
     item = session.get(Items, item_id)
     if item:
         session.delete(item)
     return item
 
 @app.get("/users/", response_model=list[UserResponse]) 
-async def get_all_users(session: Session = Depends(get_session),current_user: dict = Depends(require_admin_role)):
+def get_all_users(session: Session = Depends(get_session),current_user: dict = Depends(require_admin_role)):
     users = session.query(Users).all()
     return users
 
 @app.patch("/users/role/{user_id}")
-async def update_role(user_id:int,request:RoleUpdateRequest,session:Session =Depends(get_session),current_user:dict=Depends(require_admin_role)):    
+def update_role(user_id:int,request:RoleUpdateRequest,session:Session =Depends(get_session),current_user:dict=Depends(require_admin_role)):    
     if request.role not in ["customer","staff","admin"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="role is invalid.")
     user = session.query(Users).filter(Users.id == user_id).first()
@@ -166,7 +163,7 @@ async def update_role(user_id:int,request:RoleUpdateRequest,session:Session =Dep
     return {"message": f"User {user.username} is now a {request.role}"}
 
 @app.get("/myitem",response_model=list[MyItemResponse])
-async def myitem(session: Session=Depends(get_session),current_user=Depends(access)) :
+def myitem(session: Session=Depends(get_session),current_user=Depends(access)) :
     items = session.query(UserItem).options(joinedload(UserItem.item)).filter(UserItem.user_id == current_user["user_id"]).all()
     
     if not items:
@@ -175,7 +172,7 @@ async def myitem(session: Session=Depends(get_session),current_user=Depends(acce
     return items
 
 @app.post("/item/{item_id}/return")
-async def return_item(item_id:int , quantity:int, session:Session = Depends(get_session),current_user = Depends(access)):
+def return_item(item_id:int , quantity:int, session:Session = Depends(get_session),current_user = Depends(access)):
     user = session.query(Users).get(current_user["user_id"])
     item = session.query(Items).filter(Items.id==item_id).first()
 
@@ -202,7 +199,7 @@ async def return_item(item_id:int , quantity:int, session:Session = Depends(get_
 
 
 @app.get("/order/{order_id}",response_model=OrderResponse)
-async def get_order(order_id:int,session:Session = Depends(get_session),current_user=Depends(access)) -> OrderResponse:
+def get_order(order_id:int,session:Session = Depends(get_session),current_user=Depends(access)) -> OrderResponse:
     order = session.query(UserItem).filter(UserItem.id == order_id)
 
     if current_user["role"] == "customer":
