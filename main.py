@@ -2,10 +2,13 @@ from fastapi import FastAPI , Depends ,HTTPException, status,Request
 from fastapi.responses import JSONResponse
 from  pydantic import BaseModel
 from database import get_session, Base, engine
-from models import Items,Users ,UserItem
-from sqlalchemy.orm import Session , joinedload
+from models import Items,Users ,Order,OrderItem
+from sqlalchemy.orm import Session 
 from dependencies import JWTBearer,require_admin_role,require_staff_role
 from auth import router 
+from typing import List
+from datetime import datetime
+from sqlalchemy import func, case
 
 app = FastAPI()
 
@@ -45,12 +48,31 @@ class MyItemResponse(BaseModel):
 
     class Config:
         from_attributes = True
-    
+
+
+class UserBasicInfo(BaseModel):
+    username: str
+    class Config:
+        from_attributes = True
+
+
+class OrderItemResponse(BaseModel):
+    item_id: int
+    quantity: int
+    price_at_buy: int
+    item: ItemInfo  
+
+    class Config:
+        from_attributes = True
 
 class OrderResponse(BaseModel):
-    username: str
-    item : str
-    quantity: int
+    id:int
+    user: UserBasicInfo
+    created_at:datetime
+    kind:str
+    total_amount :int 
+    items : List[OrderItemResponse]
+    
 
     class Config:
         from_attributes = True
@@ -109,8 +131,8 @@ def read_items(limit:int=10, offset:int =0 ,session: Session=Depends(get_session
 
     return items
 
-@app.post("/item/{item_id}/buy")
-def buy(item_id:int , quantity:int , session:Session=Depends(get_session),current_user=Depends(access)):
+@app.post("/item/{item_id}/add-to-cart")
+def add_to_cart(item_id:int , quantity:int , session:Session=Depends(get_session),current_user=Depends(access)):
     user = session.query(Users).filter(Users.id == current_user["user_id"]).with_for_update().first()
     item = session.query(Items).filter(Items.id == item_id).with_for_update().first()
 
@@ -121,20 +143,31 @@ def buy(item_id:int , quantity:int , session:Session=Depends(get_session),curren
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="موجودی نمیتواند منفی باشد.")
     
     if item.quantity < quantity:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"موجودی کافی نیست. موجودی فعلی: {item.quantity}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"موجودی کالا کافی نیست. موجودی فعلی: {item.quantity}")
     
     if quantity * item.price > user.balance:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="موجودی کافی نیست.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="اعتبار حساب کافی نیست.")
 
-    user.balance -= quantity * item.price
-    item.quantity -= quantity
+    order = session.query(Order).filter_by(user_id = user.id, status="pending",kind="buy").first()
+    if not order:
+        order = Order(user_id = user.id, status="pending",kind="buy")
+        session.add(order)
+        session.flush()
+
+    order.total_amount += quantity*item.price
     
-    exist_item = session.query(UserItem).filter_by(item_id=item_id,user_id = user.id).with_for_update().first()
-    if exist_item:
-        exist_item.quantity += quantity
+    exist_order_item = session.query(OrderItem).filter(OrderItem.order_id==order.id,OrderItem.item_id == item_id).first()
+    if exist_order_item:
+        exist_order_item.quantity += quantity
     else:
-        transaction = UserItem(item_id=item_id,user_id=user.id,quantity=quantity,user=user,item=item)
-        session.add(transaction)
+        new_order_item = OrderItem(
+                                order_id=order.id, 
+                                item_id=item.id, 
+                                quantity=quantity,
+                                price_at_buy=item.price
+                                    )
+
+        session.add(new_order_item)
     session.flush()
     return {"message": f"تعداد {quantity} عدد از {item.name} به لیست خریدهای شما اضافه شد"}
 
@@ -164,50 +197,73 @@ def update_role(user_id:int,request:RoleUpdateRequest,session:Session =Depends(g
 
 @app.get("/myitem",response_model=list[MyItemResponse])
 def myitem(session: Session=Depends(get_session),current_user=Depends(access)) :
-    items = session.query(UserItem).options(joinedload(UserItem.item)).filter(UserItem.user_id == current_user["user_id"]).all()
-    
-    if not items:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=" محصولی موجود نیست")
 
+
+    calculator = func.sum(
+        case((Order.kind=="buy",OrderItem.quantity),(Order.kind=="return",-OrderItem.quantity),else_=0)
+    )
+    results = session.query(
+    OrderItem.item_id,
+    calculator.label("quantity"),
+    Items
+    ).join(
+    Order, Order.id == OrderItem.order_id
+    ).join(Items,Items.id == OrderItem.item_id).filter(Order.status=="completed",Order.user_id==current_user["user_id"]).group_by(OrderItem.item_id,Items.id).having(calculator>0).all()
+    if not results:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=" محصولی موجود نیست")
+    items = []
+    for row in results:
+        items.append({"item_id": row.item_id,
+        "quantity": row.quantity,
+        "item":row.Items}
+        )
     return items
 
 @app.post("/item/{item_id}/return")
 def return_item(item_id:int , quantity:int, session:Session = Depends(get_session),current_user = Depends(access)):
-    user = session.query(Users).get(current_user["user_id"])
-    item = session.query(Items).filter(Items.id==item_id).first()
-
+    user = session.query(Users).with_for_update().get(current_user["user_id"])
+    myitems = myitem(session=session,current_user=current_user)
+    item = session.query(Items).filter(Items.id==item_id).with_for_update().first()
+    
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="این محصول موجود نیست")
-    
-    exist_order = session.query(UserItem).filter_by(item_id=item_id,user_id=user.id).first()
-    if not exist_order:
+    myitems_ = [item["item"] for item in myitems]
+    quantities = [item["quantity"] for item in myitems]
+    if item not in myitems_:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="این محصول در لیست خرید شما وجود ندارد")
-
+    
     if quantity <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="موجودی نمیتواند منفی باشد.")
     
-    if quantity > exist_order.quantity:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"شما فقط {exist_order.quantity} عدد از این محصول را خریداری کرده اید.")
+    if quantity > quantities[myitems_.index(item)]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"شما فقط {quantities[myitems_.index(item)]} عدد از این محصول را خریداری کرده اید.")
+    order = Order(user_id=user.id,status="completed",kind="return")
+    session.add(order)
+    session.flush()
+    session.refresh(order)
+    order_item = OrderItem(order_id=order.id,item_id=item.id,quantity=quantity,price_at_buy=item.price)
     
+    
+    session.add(order_item)
+    session.flush()
     user.balance += quantity * item.price
     item.quantity += quantity
-    exist_order.quantity -= quantity
-    if exist_order.quantity == 0:
-        session.delete(exist_order)
+    order.total_amount += quantity * item.price
     session.flush()
     return {"message": f"تعداد {quantity} عدد از {item.name} با موفقیت مرجوع شد."}
 
 
 @app.get("/order/{order_id}",response_model=OrderResponse)
 def get_order(order_id:int,session:Session = Depends(get_session),current_user=Depends(access)) -> OrderResponse:
-    order = session.query(UserItem).filter(UserItem.id == order_id)
+    order = session.query(Order).filter(Order.id == order_id)
 
     if current_user["role"] == "customer":
-        order = order.filter(UserItem.user_id == current_user["user_id"])
-        
+        order = order.filter(Order.user_id == current_user["user_id"])
     order = order.first()
 
     if not  order:  
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="سفارش موجود نیست.")
     
-    return {"username": order.user.username, "item": order.item.name, "quantity": order.quantity}
+    return order
+
+

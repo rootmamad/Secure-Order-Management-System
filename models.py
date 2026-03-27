@@ -1,18 +1,31 @@
-from sqlalchemy import Table, Column, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Column, ForeignKey, Integer, String
 from database import Base
 from sqlalchemy.orm import relationship
+from datetime import datetime
 
 
-class UserItem(Base):
-    __tablename__ = "user_items"
-    
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    item_id = Column(Integer, ForeignKey("Items.id"), nullable=False)
-    quantity = Column(Integer, default=1)
-    
-    user = relationship("Users", back_populates="purchased_items")
-    item = relationship("Items", back_populates="buyers")
+class Order(Base):
+    __tablename__ = "orders"
+    id = Column(Integer,primary_key=True)
+    user_id = Column(Integer,ForeignKey("users.id"))
+    total_amount = Column(Integer,default=0)
+    created_at = Column(DateTime,default=datetime.now)
+    status = Column(String , default="pending")
+    kind = Column(String,default="buy")
+
+    user = relationship("Users",back_populates="orders")
+    items = relationship("OrderItem",back_populates="order")
+
+class OrderItem (Base):
+    __tablename__ = "orderitems"
+    id = Column (Integer,primary_key=True)
+    order_id = Column(Integer,ForeignKey("orders.id"))
+    item_id = Column(Integer,ForeignKey("Items.id"))
+    quantity = Column(Integer,nullable=False)
+    price_at_buy = Column(Integer,nullable=False)
+
+    order = relationship("Order",back_populates="items")
+    item = relationship("Items",back_populates="order_items")
 
 
 class Items(Base):
@@ -22,7 +35,7 @@ class Items(Base):
     name = Column(String, index=True)
     quantity = Column(Integer)
     price = Column(Integer)
-    buyers = relationship("UserItem", back_populates="item")
+    order_items = relationship("OrderItem", back_populates="item")
 
 class Users(Base):
     __tablename__ = "users"
@@ -32,7 +45,7 @@ class Users(Base):
     full_name = Column(String, index=True)
     hashed_password = Column(String)
     balance = Column(Integer,default=0)
-    purchased_items = relationship("UserItem", back_populates="user")
+    orders  = relationship("Order", back_populates="user")
     role = Column(String,default="customer")
 
     
