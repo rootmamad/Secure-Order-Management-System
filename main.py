@@ -256,7 +256,11 @@ def return_item(item_id:int , quantity:int, session:Session = Depends(get_sessio
 
 @app.get("/order/{order_id}",response_model=OrderResponse)
 def get_order(order_id:int,session:Session = Depends(get_session),current_user=Depends(access)) -> OrderResponse:
-    order = session.query(Order).filter(Order.id == order_id).first()
+    order = session.query(Order).filter(Order.id == order_id)
+
+    if current_user["role"] == "customer":
+        order = order.filter(Order.user_id == current_user["user_id"])
+    order = order.first()
 
     if not  order:  
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="سفارش موجود نیست.")
@@ -266,15 +270,23 @@ def get_order(order_id:int,session:Session = Depends(get_session),current_user=D
 
 @app.post("/order/{order_id}/checkout")
 def checkout(order_id:int,session:Session=Depends(get_session),current_user=Depends(access)):
-    order = session.query(Order).with_for_update().filter(Order.id == order_id).first()
+    order = session.query(Order).with_for_update().filter(Order.id == order_id)
     user = session.query(Users).with_for_update().filter(Users.id == current_user["user_id"]).first()
+    
+    if current_user["role"] == "customer":
+        order = order.filter(Order.user_id == current_user["user_id"])
+
+    order = order.first()    
+    
     if not order:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="order not found. ")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="order not found.")
+    
+
     
     if order.status == "completed":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="This order has already been completed.")
     
-
+    
     if order.total_amount > user.balance:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Insufficient balance to complete the checkout.")
     
@@ -286,9 +298,9 @@ def checkout(order_id:int,session:Session=Depends(get_session),current_user=Depe
 
     for item_ in order_items:
 
-        item = items_dict.get(item_.id)
+        item = items_dict.get(item_.item_id)
         if not item:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Item with ID {item.id} no longer exists.")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Item with ID {item_.item_id} no longer exists.")
         if item_.quantity >  item.quantity:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"Insufficient stock for '{item.name}'. Only {item.quantity} remaining (requested: {item_.quantity}).")
         
