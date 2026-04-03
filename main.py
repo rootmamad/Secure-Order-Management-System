@@ -271,7 +271,7 @@ def get_order(order_id:int,session:Session = Depends(get_session),current_user=D
 @app.post("/order/{order_id}/checkout")
 def checkout(order_id:int,session:Session=Depends(get_session),current_user=Depends(access)):
     order = session.query(Order).with_for_update().filter(Order.id == order_id)
-    user = session.query(Users).with_for_update().filter(Users.id == current_user["user_id"]).first()
+    
     
     if current_user["role"] == "customer":
         order = order.filter(Order.user_id == current_user["user_id"])
@@ -286,7 +286,7 @@ def checkout(order_id:int,session:Session=Depends(get_session),current_user=Depe
     if order.status == "completed":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="This order has already been completed.")
     
-    
+    user = session.query(Users).with_for_update().filter(Users.id == order.user_id).first()
     if order.total_amount > user.balance:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Insufficient balance to complete the checkout.")
     
