@@ -14,8 +14,8 @@ router = APIRouter(
 
 
 @router.get("/users/", response_model=list[UserResponse]) 
-def get_all_users(session: Session = Depends(get_session),current_user: dict = Depends(require_admin_role)):
-    users = session.query(Users).all()
+def get_all_users(offset:int=0,limit:int=10,session: Session = Depends(get_session),current_user: dict = Depends(require_admin_role)):
+    users = session.query(Users).limit(limit).offset(offset).all()
     return users
 
 @router.patch("/users/role/{user_id}")
