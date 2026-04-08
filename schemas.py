@@ -3,9 +3,6 @@ from typing import List
 from datetime import datetime
 
 
-
-
-
 class UserResponse(BaseModel):
     id:int
     username: str
@@ -89,3 +86,37 @@ class OrderResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class UserBase(BaseModel):
+    username: str
+    full_name: str | None = None
+
+
+class UserCreate(UserBase):
+    password: str
+    balance: int
+
+
+
+class UserRead(UserBase):
+    id: int
+
+
+class UserInDB(UserBase):
+    hashed_password: str    
+
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+class LoginResponse(BaseModel):
+    token: Token
+    user: UserRead
+
+class UserLogin(BaseModel):
+    username: str
+    password: str

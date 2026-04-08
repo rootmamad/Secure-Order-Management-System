@@ -5,6 +5,12 @@ from dependencies import JWTBearer
 from auth import router 
 from routers import items, orders,users
 import logging
+from slowapi.errors import RateLimitExceeded
+from rate_limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
+
+
+
 
 logging.basicConfig(
     filename="app.log",
@@ -16,6 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 app = FastAPI()
+
+app.state.limiter = limiter
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 access = JWTBearer()
 app.include_router(router)

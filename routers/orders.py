@@ -1,11 +1,12 @@
-from fastapi import   Depends ,HTTPException, status,APIRouter
-from pydantic import BaseModel
+from fastapi import   Depends ,HTTPException, status,APIRouter,Request
 from database import get_session
 from sqlalchemy.orm import Session 
 from models import Order,OrderItem,Items,Users
 from sqlalchemy import func,case 
 from schemas import MyItemResponse,OrderResponse
 from dependencies import JWTBearer
+from rate_limiter import limiter
+
 access = JWTBearer()
 router = APIRouter(
     prefix="/api/v1/orders",
@@ -14,7 +15,8 @@ router = APIRouter(
 
 
 @router.post("/item/{item_id}/add-to-cart")
-def add_to_cart(item_id:int , quantity:int , session:Session=Depends(get_session),current_user=Depends(access)):
+@limiter.limit("20/minute")
+def add_to_cart(request:Request,item_id:int , quantity:int , session:Session=Depends(get_session),current_user=Depends(access)):
     user = session.query(Users).filter(Users.id == current_user["user_id"]).with_for_update().first()
     item = session.query(Items).filter(Items.id == item_id).with_for_update().first()
 
@@ -58,7 +60,8 @@ def add_to_cart(item_id:int , quantity:int , session:Session=Depends(get_session
 
 
 @router.get("/myitem",response_model=list[MyItemResponse])
-def myitem(session: Session=Depends(get_session),current_user=Depends(access)) :
+@limiter.limit("5/minute")
+def myitem(request:Request,session: Session=Depends(get_session),current_user=Depends(access)) :
 
 
     calculator = func.sum(
@@ -82,7 +85,8 @@ def myitem(session: Session=Depends(get_session),current_user=Depends(access)) :
     return items
 
 @router.post("/item/{item_id}/return")
-def return_item(item_id:int , quantity:int, session:Session = Depends(get_session),current_user = Depends(access)):
+@limiter.limit("5/minute")
+def return_item(request:Request,item_id:int , quantity:int, session:Session = Depends(get_session),current_user = Depends(access)):
     user = session.query(Users).with_for_update().get(current_user["user_id"])
     myitems = myitem(session=session,current_user=current_user)
     item = session.query(Items).filter(Items.id==item_id).with_for_update().first()
@@ -114,9 +118,9 @@ def return_item(item_id:int , quantity:int, session:Session = Depends(get_sessio
     session.flush()
     return {"message": f"تعداد {quantity} عدد از {item.name} با موفقیت مرجوع شد."}
 
-
 @router.get("/order/{order_id}",response_model=OrderResponse)
-def get_order(order_id:int,session:Session = Depends(get_session),current_user=Depends(access)) -> OrderResponse:
+@limiter.limit("100/minute")
+def get_order(request:Request,order_id:int,session:Session = Depends(get_session),current_user=Depends(access)) -> OrderResponse:
     order = session.query(Order).filter(Order.id == order_id)
 
     if current_user["role"] == "customer":
@@ -128,9 +132,9 @@ def get_order(order_id:int,session:Session = Depends(get_session),current_user=D
     
     return order
 
-
 @router.post("/order/{order_id}/checkout")
-def checkout(order_id:int,session:Session=Depends(get_session),current_user=Depends(access)):
+@limiter.limit("5/minute")
+def checkout(request:Request,order_id:int,session:Session=Depends(get_session),current_user=Depends(access)):
     order = session.query(Order).with_for_update().filter(Order.id == order_id)
     
     
@@ -174,8 +178,9 @@ def checkout(order_id:int,session:Session=Depends(get_session),current_user=Depe
 
 
 @router.patch("/order/{order_id}/cancel")
-async def cancel(order_id:int,session:Session=Depends(get_session),current_user=Depends(access)):
-    order = session.query(Order).filter(Order.id == order_id)
+@limiter.limit("5/minute")
+async def cancel(request:Request,order_id:int,session:Session=Depends(get_session),current_user=Depends(access)):
+    order = session.query(Order).filter(Order.id == order_id).with_for_update()
 
     if current_user["role"] == "customer":
         order = order.filter(Order.user_id == current_user["user_id"])

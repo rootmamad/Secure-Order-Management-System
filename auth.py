@@ -1,53 +1,23 @@
 import jwt
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status,Request
 from sqlalchemy.orm import Session
 from utils import create_hash,create_token, verify_hash, verify_token
 from models import Users, RefreshTokens
 from database import get_session
+from rate_limiter import limiter
+from schemas import LoginResponse,UserCreate,UserLogin,Token,RefreshTokenRequest
+
 
 secret_key = "rootmamad06"
 algorithm = "HS256"
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class UserBase(BaseModel):
-    username: str
-    full_name: str | None = None
 
-
-class UserCreate(UserBase):
-    password: str
-    balance: int
-
-
-
-class UserRead(UserBase):
-    id: int
-
-
-class UserInDB(UserBase):
-    hashed_password: str    
-
-
-class Token(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-class RefreshTokenRequest(BaseModel):
-    refresh_token: str
-
-class LoginResponse(BaseModel):
-    token: Token
-    user: UserRead
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
 
 @router.post("/register/", response_model=LoginResponse)
-async def register(user: UserCreate, session: Session = Depends(get_session)) -> LoginResponse:
+@limiter.limit("5/minute")
+async def register(request:Request,user: UserCreate, session: Session = Depends(get_session)) -> LoginResponse:
 
 
     if session.query(Users).filter(Users.username == user.username).first():
@@ -77,7 +47,8 @@ async def register(user: UserCreate, session: Session = Depends(get_session)) ->
 
 
 @router.post("/login/", response_model=LoginResponse)
-async def login(user: UserLogin, session: Session = Depends(get_session)) -> LoginResponse:
+@limiter.limit("5/minute")
+async def login(request:Request,user: UserLogin, session: Session = Depends(get_session)) -> LoginResponse:
     db_user = session.query(Users).filter(Users.username == user.username).first()
 
     if not db_user or not await verify_hash(user.password, db_user.hashed_password):
@@ -102,9 +73,9 @@ async def login(user: UserLogin, session: Session = Depends(get_session)) -> Log
         },
         "user": db_user  
     }
-
 @router.post("/refresh/", response_model=Token)
-async def refresh_token(request: RefreshTokenRequest, session: Session = Depends(get_session)) -> Token:
+@limiter.limit("5/minute")
+async def refresh_token(request_:Request,request: RefreshTokenRequest, session: Session = Depends(get_session)) -> Token:
     try:
         payload = jwt.decode(request.refresh_token, secret_key, algorithms=[algorithm])
         if not payload.get("is_refresh"):
