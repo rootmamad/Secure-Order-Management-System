@@ -1,6 +1,8 @@
 from fastapi import Request, HTTPException, status,Depends
 from fastapi.security import HTTPBearer
-from auth import verify_token, secret_key, algorithm 
+from auth import verify_token
+from config import settings
+
 
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
@@ -13,7 +15,7 @@ class JWTBearer(HTTPBearer):
             token = credentials.credentials 
             
             try:
-                payload = await verify_token(token, secret_key, [algorithm])
+                payload = await verify_token(token, settings.secret_key, [settings.algorithm])
                 
                 if payload.get("is_refresh"):
                     raise HTTPException(

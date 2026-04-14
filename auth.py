@@ -6,10 +6,9 @@ from models import Users, RefreshTokens
 from database import get_session
 from rate_limiter import limiter
 from schemas import LoginResponse,UserCreate,UserLogin,Token,RefreshTokenRequest
+from config import settings
 
 
-secret_key = "rootmamad06"
-algorithm = "HS256"
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -30,12 +29,12 @@ async def register(request:Request,user: UserCreate, session: Session = Depends(
     session.refresh(db_user)
 
 
-    refresh_token = await create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": True}, secret_key, algorithm)
+    refresh_token = await create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": True}, settings.secret_key, settings.algorithm)
     db_refresh_token = RefreshTokens(user_id=db_user.id, token=refresh_token)
     session.add(db_refresh_token)   
     session.flush()
     session.refresh(db_refresh_token)
-    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, secret_key, algorithm)  
+    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, settings.secret_key, settings.algorithm)  
     return {
         "token": {
             "access_token": access_token,
@@ -59,12 +58,12 @@ async def login(request:Request,user: UserLogin, session: Session = Depends(get_
         session.delete(last_refresh_token)
         session.flush()
 
-    refresh_token = await create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": True}, secret_key, algorithm)
+    refresh_token = await create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": True}, settings.secret_key, settings.algorithm)
     db_refresh_token = RefreshTokens(user_id=db_user.id, token=refresh_token)
     session.add(db_refresh_token)   
     session.flush()
     session.refresh(db_refresh_token)
-    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, secret_key, algorithm)  
+    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, settings.secret_key, settings.algorithm)  
     return {
         "token": {
             "access_token": access_token,
@@ -77,7 +76,7 @@ async def login(request:Request,user: UserLogin, session: Session = Depends(get_
 @limiter.limit("5/minute")
 async def refresh_token(request_:Request,request: RefreshTokenRequest, session: Session = Depends(get_session)) -> Token:
     try:
-        payload = jwt.decode(request.refresh_token, secret_key, algorithms=[algorithm])
+        payload = jwt.decode(request.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
         if not payload.get("is_refresh"):
             raise HTTPException(status_code=401, detail="این اکسس توکنه، رفرش توکن بده!")
     except jwt.PyJWTError:
@@ -90,10 +89,10 @@ async def refresh_token(request_:Request,request: RefreshTokenRequest, session: 
     user = session.query(Users).filter(Users.id == old_refresh_token.user_id).first()
     if not user:   
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    new_access_token = await create_token({"user_id": user.id,"username": user.username,"role": user.role,"is_refresh": False}, secret_key, algorithm)  
+    new_access_token = await create_token({"user_id": user.id,"username": user.username,"role": user.role,"is_refresh": False}, settings.secret_key, settings.algorithm)  
     session.delete(old_refresh_token)
     session.flush()
-    new_refresh_token = await create_token({"user_id": user.id,"username": user.username,"is_refresh": True}, secret_key, algorithm)
+    new_refresh_token = await create_token({"user_id": user.id,"username": user.username,"is_refresh": True}, settings.secret_key, settings.algorithm)
     db_refresh_token = RefreshTokens(user_id=user.id, token=new_refresh_token)
     session.add(db_refresh_token)
     session.flush()

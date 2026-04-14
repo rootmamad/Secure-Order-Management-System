@@ -3,9 +3,7 @@ import jwt
 from passlib.hash import pbkdf2_sha256
 from fastapi import HTTPException, status,Request
 from slowapi.util import get_remote_address
-
-secret_key = "rootmamad06"
-algorithm = "HS256"
+from config import settings
 
 async def create_hash(password: str) -> str:
     return pbkdf2_sha256.hash(password)   
@@ -49,7 +47,7 @@ def get_user_id(request:Request):
     if header and header.startswith("Bearer "):
         token = header.split(" ")[1]
         try:
-            payload = jwt.decode(token,secret_key,[algorithm])
+            payload = jwt.decode(token,settings.secret_key,[settings.algorithm])
             user_id  = payload.get("user_id")
 
             return f"user:{user_id}"
