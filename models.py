@@ -56,3 +56,10 @@ class RefreshTokens(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     token = Column(String, unique=True, index=True)
     
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+    id = Column(Integer,primary_key=True,index=True)
+    user_id = Column(Integer,index=True)
+    action = Column(String,index=True)
+    detail = Column(String,index=True)
+    time = Column(DateTime,default=datetime.now)

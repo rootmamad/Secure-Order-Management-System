@@ -6,6 +6,7 @@ from dependencies import require_admin_role
 from schemas import UserResponse,RoleUpdateRequest
 from dependencies import JWTBearer
 from rate_limiter import limiter
+from celery_worker import audit_log
 
 access = JWTBearer()
 
@@ -29,4 +30,9 @@ def update_role(request_:Request,user_id:int,request:RoleUpdateRequest,session:S
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="user not found.")
     user.role = request.role
     session.flush()
+    audit_log.delay(
+        user_id=user.id,
+        action="CHANGE_ROLE_SUCCESS",
+        detail=f"User {current_user['user_id']} changed {user.id} to {request.role}"
+    )
     return {"message": f"User {user.username} is now a {request.role}"}

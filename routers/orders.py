@@ -6,6 +6,9 @@ from sqlalchemy import func,case
 from schemas import MyItemResponse,OrderResponse
 from dependencies import JWTBearer
 from rate_limiter import limiter
+from celery_worker import audit_log
+
+
 
 access = JWTBearer()
 router = APIRouter(
@@ -115,6 +118,11 @@ def return_item(request:Request,item_id:int , quantity:int, session:Session = De
     user.balance += quantity * item.price
     item.quantity += quantity
     order.total_amount += quantity * item.price
+    audit_log.delay(
+        user_id=user.id,
+        action="RETURN_SUCCESS",
+        detail=f"User {current_user['user_id']} returned item {item.id}"
+    )
     session.flush()
     return {"message": f"تعداد {quantity} عدد از {item.name} با موفقیت مرجوع شد."}
 
@@ -172,6 +180,11 @@ def checkout(request:Request,order_id:int,session:Session=Depends(get_session),c
         item.quantity -= item_.quantity
     user.balance -= order.total_amount
     order.status = "completed"
+    audit_log.delay(
+        user_id=user.id,
+        action="CHECKOUT_SUCCESS",
+        detail=f"User {current_user['user_id']} checkouted order {order.id}"
+    )
 
     return {"message":"Order successfully completed."}
 
@@ -195,5 +208,10 @@ async def cancel(request:Request,order_id:int,session:Session=Depends(get_sessio
     if order.status != "pending":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="This order has already been completed or canceled.")
     order.status = "canceled"
+    audit_log.delay(
+        user_id=current_user["user_id"],
+        action="CANCEL_SUCCESS",
+        detail=f"User {current_user['user_id']} canceled order {order.id}"
+    )
     session.flush()
     return {"message": "سفارش با موفقیت لغو شد."}
