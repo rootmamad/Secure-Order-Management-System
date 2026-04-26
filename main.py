@@ -35,7 +35,7 @@ app.include_router(users.router)
 
 
 @app.exception_handler(Exception)
-async def handle_error(request:Request,exception:Exception):
+def handle_error(request:Request,exception:Exception):
     logger.error(f"Unhandled error on {request.method} {request.url.path}: {exception}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

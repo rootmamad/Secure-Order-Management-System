@@ -192,7 +192,7 @@ def checkout(request:Request,order_id:int,session:Session=Depends(get_session),c
 
 @router.patch("/order/{order_id}/cancel")
 @limiter.limit("5/minute")
-async def cancel(request:Request,order_id:int,session:Session=Depends(get_session),current_user=Depends(access)):
+def cancel(request:Request,order_id:int,session:Session=Depends(get_session),current_user=Depends(access)):
     order = session.query(Order).filter(Order.id == order_id).with_for_update()
 
     if current_user["role"] == "customer":

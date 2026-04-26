@@ -5,14 +5,14 @@ from fastapi import HTTPException, status,Request
 from slowapi.util import get_remote_address
 from config import settings
 
-async def create_hash(password: str) -> str:
+def create_hash(password: str) -> str:
     return pbkdf2_sha256.hash(password)   
 
 
-async def verify_hash(password: str, hash: str) -> bool:
+def verify_hash(password: str, hash: str) -> bool:
     return pbkdf2_sha256.verify(password, hash)   
 
-async def create_token(data: dict, secret_key: str, algorithm: str) -> str:
+def create_token(data: dict, secret_key: str, algorithm: str) -> str:
     to_encode = data.copy()
     
     if data.get("is_refresh"):
@@ -25,7 +25,7 @@ async def create_token(data: dict, secret_key: str, algorithm: str) -> str:
     return jwt.encode(to_encode, secret_key, algorithm=algorithm)
 
 
-async def verify_token(token: str, secret_key: str, algorithms: list[str]) -> dict:
+def verify_token(token: str, secret_key: str, algorithms: list[str]) -> dict:
     try:
         payload = jwt.decode(token, secret_key, algorithms=algorithms)
         return payload

@@ -38,6 +38,9 @@ class Item(BaseModel):
     class Config:
         from_attributes = True
 
+class ItemResponse(Item):
+    id:int 
+
 
 class ItemInfo(BaseModel):
     name: str

@@ -16,25 +16,25 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register/", response_model=LoginResponse)
 @limiter.limit("5/minute")
-async def register(request:Request,user: UserCreate, session: Session = Depends(get_session)) -> LoginResponse:
+def register(request:Request,user: UserCreate, session: Session = Depends(get_session)) -> LoginResponse:
 
 
     if session.query(Users).filter(Users.username == user.username).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
     
-    hashed_password = await create_hash(user.password)
+    hashed_password =  create_hash(user.password)
     db_user = Users(username=user.username, full_name=user.full_name, hashed_password=hashed_password,balance=user.balance)
     session.add(db_user)
     session.flush()
     session.refresh(db_user)
 
 
-    refresh_token = await create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": True}, settings.secret_key, settings.algorithm)
+    refresh_token =  create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": True}, settings.secret_key, settings.algorithm)
     db_refresh_token = RefreshTokens(user_id=db_user.id, token=refresh_token)
     session.add(db_refresh_token)   
     session.flush()
     session.refresh(db_refresh_token)
-    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, settings.secret_key, settings.algorithm)  
+    access_token =  create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, settings.secret_key, settings.algorithm)  
     return {
         "token": {
             "access_token": access_token,
@@ -47,10 +47,10 @@ async def register(request:Request,user: UserCreate, session: Session = Depends(
 
 @router.post("/login/", response_model=LoginResponse)
 @limiter.limit("5/minute")
-async def login(request:Request,user: UserLogin, session: Session = Depends(get_session)) -> LoginResponse:
+def login(request:Request,user: UserLogin, session: Session = Depends(get_session)) -> LoginResponse:
     db_user = session.query(Users).filter(Users.username == user.username).first()
 
-    if not db_user or not await verify_hash(user.password, db_user.hashed_password):
+    if not db_user or not  verify_hash(user.password, db_user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
     
     last_refresh_token = session.query(RefreshTokens).filter(RefreshTokens.user_id == db_user.id).order_by(RefreshTokens.id.desc()).first()
@@ -58,12 +58,12 @@ async def login(request:Request,user: UserLogin, session: Session = Depends(get_
         session.delete(last_refresh_token)
         session.flush()
 
-    refresh_token = await create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": True}, settings.secret_key, settings.algorithm)
+    refresh_token =  create_token({"user_id": db_user.id,"username": db_user.username,"is_refresh": True}, settings.secret_key, settings.algorithm)
     db_refresh_token = RefreshTokens(user_id=db_user.id, token=refresh_token)
     session.add(db_refresh_token)   
     session.flush()
     session.refresh(db_refresh_token)
-    access_token = await create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, settings.secret_key, settings.algorithm)  
+    access_token =  create_token({"user_id": db_user.id,"username": db_user.username,"role": db_user.role,"is_refresh": False}, settings.secret_key, settings.algorithm)  
     return {
         "token": {
             "access_token": access_token,
@@ -74,7 +74,7 @@ async def login(request:Request,user: UserLogin, session: Session = Depends(get_
     }
 @router.post("/refresh/", response_model=Token)
 @limiter.limit("5/minute")
-async def refresh_token(request_:Request,request: RefreshTokenRequest, session: Session = Depends(get_session)) -> Token:
+def refresh_token(request_:Request,request: RefreshTokenRequest, session: Session = Depends(get_session)) -> Token:
     try:
         payload = jwt.decode(request.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
         if not payload.get("is_refresh"):
@@ -89,10 +89,10 @@ async def refresh_token(request_:Request,request: RefreshTokenRequest, session: 
     user = session.query(Users).filter(Users.id == old_refresh_token.user_id).first()
     if not user:   
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    new_access_token = await create_token({"user_id": user.id,"username": user.username,"role": user.role,"is_refresh": False}, settings.secret_key, settings.algorithm)  
+    new_access_token =  create_token({"user_id": user.id,"username": user.username,"role": user.role,"is_refresh": False}, settings.secret_key, settings.algorithm)  
     session.delete(old_refresh_token)
     session.flush()
-    new_refresh_token = await create_token({"user_id": user.id,"username": user.username,"is_refresh": True}, settings.secret_key, settings.algorithm)
+    new_refresh_token =  create_token({"user_id": user.id,"username": user.username,"is_refresh": True}, settings.secret_key, settings.algorithm)
     db_refresh_token = RefreshTokens(user_id=user.id, token=new_refresh_token)
     session.add(db_refresh_token)
     session.flush()

@@ -9,13 +9,14 @@ class JWTBearer(HTTPBearer):
         super(JWTBearer, self).__init__(auto_error=auto_error)
 
     async def __call__(self, request: Request):
-        credentials = await super(JWTBearer, self).__call__(request)
+        credentials =  await super(JWTBearer, self).__call__(request)
         
         if credentials:
+            print(credentials)
             token = credentials.credentials 
             
             try:
-                payload = await verify_token(token, settings.secret_key, [settings.algorithm])
+                payload =  verify_token(token, settings.secret_key, [settings.algorithm])
                 
                 if payload.get("is_refresh"):
                     raise HTTPException(

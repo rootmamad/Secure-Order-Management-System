@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_session
 from models import Items
 from dependencies import require_staff_role
-from schemas import Item
+from schemas import Item,ItemResponse
 from dependencies import JWTBearer
 from rate_limiter import limiter
 
@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 
-@router.post("/create/" , response_model=Item)
+@router.post("/create/" , response_model=ItemResponse)
 def create_item(item: Item, session: Session=Depends(get_session),dependency=Depends(require_staff_role)) -> Item:
     db_item  = Items(**item.model_dump())
     session.add(db_item)
@@ -24,7 +24,6 @@ def create_item(item: Item, session: Session=Depends(get_session),dependency=Dep
     session.flush()
     session.refresh(db_item)
     return db_item
-
 @router.get("/item/{item_id}", response_model=Item)
 @limiter.limit("100/minute")
 def read_item(request:Request,item_id: int, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
@@ -47,6 +46,9 @@ def read_items(request:Request,limit:int=10, offset:int =0 ,session: Session=Dep
 @router.post("/delete/",response_model=Item)
 def delete(item_id: int, session: Session=Depends(get_session),dependency=Depends(require_staff_role)) -> Item:
     item = session.get(Items, item_id)
-    if item:
-        session.delete(item)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="چنین محصولی موجود نیست")
+
+    session.delete(item)
+    
     return item
