@@ -12,7 +12,6 @@ class JWTBearer(HTTPBearer):
         credentials =  await super(JWTBearer, self).__call__(request)
         
         if credentials:
-            print(credentials)
             token = credentials.credentials 
             
             try:

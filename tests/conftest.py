@@ -59,7 +59,6 @@ def user_login(client):
     
     
     token = response.json()["token"]["access_token"]
-    print(token,"kharet")
     return {"Authorization": f"Bearer {token}"}
 
 @pytest.fixture
@@ -82,7 +81,6 @@ def admin_login(client,db_session):
         "username": "admin_user",
         "password": "1234"
     })
-    print(response.json(),"asd")
     token = response.json()["token"]["access_token"]
     
 
