@@ -3,7 +3,8 @@ __pycache__/
 *$py.class
 
 .env
-
+celerybeat-schedule
+celerybeat.pid
 venv/
 env/
 .venv/
@@ -12,6 +13,7 @@ ings
 .vscode/
 
 *.db
+celerybeat*
 
 
 .DS_Store

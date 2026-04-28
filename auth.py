@@ -46,7 +46,7 @@ def register(request:Request,user: UserCreate, session: Session = Depends(get_se
 
 
 @router.post("/login/", response_model=LoginResponse)
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 def login(request:Request,user: UserLogin, session: Session = Depends(get_session)) -> LoginResponse:
     db_user = session.query(Users).filter(Users.username == user.username).first()
 
@@ -74,15 +74,15 @@ def login(request:Request,user: UserLogin, session: Session = Depends(get_sessio
     }
 @router.post("/refresh/", response_model=Token)
 @limiter.limit("5/minute")
-def refresh_token(request_:Request,request: RefreshTokenRequest, session: Session = Depends(get_session)) -> Token:
+def refresh_token(request:Request,request_: RefreshTokenRequest, session: Session = Depends(get_session)) -> Token:
     try:
-        payload = jwt.decode(request.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(request_.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
         if not payload.get("is_refresh"):
             raise HTTPException(status_code=401, detail="این اکسس توکنه، رفرش توکن بده!")
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="توکن نامعتبر یا منقضی شده")
 
-    old_refresh_token = session.query(RefreshTokens).filter(RefreshTokens.token == request.refresh_token).first()
+    old_refresh_token = session.query(RefreshTokens).filter(RefreshTokens.token == request_.refresh_token).first()
     if not old_refresh_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
     

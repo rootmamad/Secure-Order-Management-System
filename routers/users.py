@@ -11,7 +11,7 @@ from celery_worker import audit_log
 access = JWTBearer()
 
 router = APIRouter(
-    prefix="/api/v1/users",
+    prefix="/api/v1",
     tags=["Users"]
 )
 

@@ -61,9 +61,8 @@ def add_to_cart(request:Request,item_id:int , quantity:int , session:Session=Dep
 
 
 
-
 @router.get("/myitem",response_model=list[MyItemResponse])
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 def myitem(request:Request,session: Session=Depends(get_session),current_user=Depends(access)) :
 
 
@@ -87,11 +86,12 @@ def myitem(request:Request,session: Session=Depends(get_session),current_user=De
         )
     return items
 
+
 @router.post("/item/{item_id}/return")
 @limiter.limit("5/minute")
-def return_item(request:Request,item_id:int , quantity:int, session:Session = Depends(get_session),current_user = Depends(access)):
+def return_item(item_id:int , quantity:int,request:Request, session:Session = Depends(get_session),current_user = Depends(access)):
     user = session.query(Users).with_for_update().get(current_user["user_id"])
-    myitems = myitem(session=session,current_user=current_user)
+    myitems = myitem(request=request,session=session,current_user=current_user)
     item = session.query(Items).filter(Items.id==item_id).with_for_update().first()
     
     if not item:

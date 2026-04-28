@@ -82,6 +82,7 @@ def admin_login(client,db_session):
         "username": "admin_user",
         "password": "1234"
     })
+    print(response.json(),"asd")
     token = response.json()["token"]["access_token"]
     
 

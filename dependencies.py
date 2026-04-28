@@ -1,6 +1,6 @@
 from fastapi import Request, HTTPException, status,Depends
 from fastapi.security import HTTPBearer
-from auth import verify_token
+from utils import verify_token
 from config import settings
 
 

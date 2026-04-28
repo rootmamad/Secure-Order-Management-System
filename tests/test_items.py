@@ -29,15 +29,3 @@ def test_delete_item(client,admin_login):
     response = client.post("/api/v1/items/delete/",params={"item_id":created_item_id},headers=admin_login)
     assert response.status_code == 200
 
-
-
-'''def test_my_items_list(auth_headers):
-    """تست مشاهده لیست خریدهای کاربر"""
-    client.post("/create/", json={"name": "Monitor", "price": 200, "quantity": 10})
-    client.post("/item/1/buy?quantity=1", headers=auth_headers)
-    
-    response = client.get("/myitem", headers=auth_headers)
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["item"]["name"] == "Monitor"'''
