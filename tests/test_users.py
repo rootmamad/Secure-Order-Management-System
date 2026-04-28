@@ -21,7 +21,7 @@ def test_refresh_token(client):
     refresh_token = login_response.json()["token"]["refresh_token"]
     
     response = client.post("/auth/refresh/",json={"refresh_token":refresh_token})
-    assert response.status_codes == 200
+    assert response.status_code == 200
 
     
 def test_get_users(client,admin_login):

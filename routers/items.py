@@ -43,7 +43,7 @@ def read_items(request:Request,limit:int=10, offset:int =0 ,session: Session=Dep
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=" محصولی موجود نیست")
 
     return items
-@router.post("/delete/",response_model=Item)
+@router.delete("/delete/",response_model=Item)
 def delete(item_id: int, session: Session=Depends(get_session),dependency=Depends(require_staff_role)) -> Item:
     item = session.get(Items, item_id)
     if not item:
