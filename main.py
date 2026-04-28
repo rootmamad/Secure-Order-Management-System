@@ -42,7 +42,5 @@ def handle_error(request:Request,exception:Exception):
         content={"detail": "An internal server error occurred. Please try again later."}
     )
 
-def create_db_and_tables():
-    Base.metadata.create_all(engine)
-    print("Database and tables created successfully.")
+
 
