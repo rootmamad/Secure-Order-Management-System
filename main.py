@@ -1,60 +1,48 @@
-from fastapi import FastAPI , Depends,APIRouter
-from  pydantic import BaseModel
-from database import get_session, Base, engine
-from models import Items
-from sqlalchemy.orm import Session 
+from fastapi import FastAPI , status,Request
+from fastapi.responses import JSONResponse
+from database import Base, engine
 from dependencies import JWTBearer
 from auth import router 
+from routers import items, orders,users
+import logging
+from slowapi.errors import RateLimitExceeded
+from rate_limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
+
+
+
+
+logging.basicConfig(
+    filename="app.log",
+    level=logging.ERROR,
+    format="%(asctime)s - %(levelname)s - PATH: %(name)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
+
 
 app = FastAPI()
 
+app.state.limiter = limiter
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 access = JWTBearer()
 app.include_router(router)
-
-class Item(BaseModel):
-    name: str
-    price: float
-    quantity: int
+app.include_router(items.router)      
+app.include_router(orders.router) 
+app.include_router(users.router) 
 
 
-    
+@app.exception_handler(Exception)
+def handle_error(request:Request,exception:Exception):
+    logger.error(f"Unhandled error on {request.method} {request.url.path}: {exception}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An internal server error occurred. Please try again later."}
+    )
 
 def create_db_and_tables():
     Base.metadata.create_all(engine)
     print("Database and tables created successfully.")
 
-
-
-
-
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
-
-
-@app.post("/create/" , response_model=Item)
-def create_hero(hero: Item, session: Session=Depends(get_session)) -> Item:
-    db_hero  = Items(**hero.model_dump())
-    session.add(db_hero)
-
-    session.flush()
-    session.refresh(db_hero)
-    return db_hero
-
-@app.get("/item/{item_id}", response_model=Item)
-async def read_item(item_id: int, session: Session=Depends(get_session),dependency=Depends(access)) -> Item:
-    item = session.get(Items, item_id)
-    return item
-
-
-@app.get("/items/", response_model=list[Item])
-async def read_items(session: Session=Depends(get_session)) -> list[Item]:
-    items = session.query(Items).all()
-    return items
-
-@app.post("/cancel/",response_model=Item)
-async def cancel(item_id: int, session: Session=Depends(get_session)) -> Item:
-    item = session.get(Items, item_id)
-    if item:
-        session.delete(item)
-    return item
