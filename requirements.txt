@@ -1,17 +1,17 @@
-fastapi==0.109.2
-uvicorn[standard]==0.27.1
-slowapi==0.1.4
+fastapi
+uvicorn[standard]
+slowapi
 
-sqlalchemy==2.0.25
-alembic==1.13.1
-psycopg2-binary==2.9.9  
-asyncpg==0.29.0         
+sqlalchemy
+alembic
+psycopg2-binary
+asyncpg        
 
-PyJWT==2.8.0
-passlib[bcrypt]==1.7.4
+PyJWT
+passlib[bcrypt]
 
-pytest==8.0.0
-httpx==0.26.0
+pytest
+httpx
 
-pydantic==2.6.0
-pydantic-settings==2.1.0
+pydantic
+pydantic-settings

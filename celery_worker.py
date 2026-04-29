@@ -4,9 +4,9 @@ from models import AuditLog
 from datetime import datetime,timedelta
 from models import Order,OrderItem
 from celery.schedules import crontab
+from config import settings
 
-
-app = Celery("orders_task",broker="amqp://guest:guest@localhost:5672//")
+app = Celery("orders_task",broker=settings.CELERY_BROKER)
 
 @app.task()
 def audit_log(user_id,action,detail):
