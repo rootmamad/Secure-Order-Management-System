@@ -15,7 +15,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register/", response_model=LoginResponse)
-@limiter.limit("5/minute")
+@limiter.limit("15/minute")
 def register(request:Request,user: UserCreate, session: Session = Depends(get_session)) -> LoginResponse:
 
 
@@ -46,7 +46,7 @@ def register(request:Request,user: UserCreate, session: Session = Depends(get_se
 
 
 @router.post("/login/", response_model=LoginResponse)
-@limiter.limit("10/minute")
+@limiter.limit("15/minute")
 def login(request:Request,user: UserLogin, session: Session = Depends(get_session)) -> LoginResponse:
     db_user = session.query(Users).filter(Users.username == user.username).first()
 
