@@ -36,6 +36,13 @@ This project was developed with a strong emphasis on **Defense in Depth**. Rathe
 *   **Testing:** Pytest, HTTPX
 *   **Infrastructure:** Docker, Docker Compose
 
+## ⚙️ CI / CD
+
+This project integrates a Continuous Integration pipeline using **GitHub Actions**.  
+On every push and pull request, the workflow automatically installs dependencies, runs lint checks, starts required services, and executes the full test suite in an isolated environment.
+
+This ensures that new changes do not break existing functionality and that the application remains stable, secure, and production‑ready.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
