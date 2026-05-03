@@ -17,3 +17,6 @@ celerybeat*
 
 .DS_Store
 Thumbs.db
+migrations/versions/*.py
+
+
