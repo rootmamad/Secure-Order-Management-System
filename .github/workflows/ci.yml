@@ -22,8 +22,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Prepare env file
-        run: cp .env.example2 .env
+
 
       - name: Install dependencies
         run: |
@@ -34,23 +33,46 @@ jobs:
         run: |
           flake8 .
           black --check .
-      - name: Build
-        run: docker compose build
+      
 
-      - name: Start PostgreSQL
-        run: docker compose up -d postgres
+      - name: Start PostgreSQL (docker run)
+        run: |
+          docker run -d \
+            --name ci-postgres \
+            -e POSTGRES_USER=order_login \
+            -e POSTGRES_PASSWORD=123456789 \
+            -e POSTGRES_DB=order_management \
+            -p 5432:5432 \
+            postgres:16
 
-      - name: Wait for Postgres
+      - name: Wait for PostgreSQL
         run: |
           for i in {1..30}; do
             pg_isready -h 127.0.0.1 -p 5432 && exit 0
             sleep 2
           done
           exit 1
+
       - name: Run tests
         env:
-          CELERY_TASK_ALWAYS_EAGER: true
+          SECRET_KEY: "rootmamad06"
+          ALGORITHM: "HS256"
+          URl_Database: "postgresql://order_login:123456789@127.0.0.1:5432/order_management"
+          POSTGRES_PASSWORD: "123456789"
+          POSTGRES_USER: "order_login"
+          POSTGRES_DB: "order_management"
+          CELERY_BROKER: "amqp://guest:guest@127.0.0.1:5672//"
+          CELERY_TASK_ALWAYS_EAGER: "true"
         run: python -m pytest tests/
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker stop ci-postgres
+
+      - name: Remove PostgreSQL container
+        if: always()
+        run: docker rm ci-postgres
+
 
   docker-build:
     runs-on: ubuntu-latest
