@@ -36,7 +36,7 @@ jobs:
       - name: Run tests
         env:
           CELERY_TASK_ALWAYS_EAGER: true
-        run: pytest tests
+        run: python -m pytest tests/
 
   docker-build:
     runs-on: ubuntu-latest
