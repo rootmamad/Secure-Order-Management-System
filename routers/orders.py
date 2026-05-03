@@ -153,7 +153,9 @@ def return_item(
     if quantity > quantities[myitems_.index(item)]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"شما فقط {quantities[myitems_.index(item)]} عدد از این محصول را خریداری کرده اید.",
+            detail=(
+               f"شما فقط {quantities[myitems_.index(item)]}عدد از این محصول را خریدید."
+            )
         )
     order = Order(user_id=user.id, status="completed", kind="return")
     session.add(order)
@@ -251,7 +253,10 @@ def checkout(
         if item_.quantity > item.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Insufficient stock for '{item.name}'. Only {item.quantity} remaining (requested: {item_.quantity}).",
+                detail=(
+                    f"Insufficient stock for '{item.name}'. "
+                    f"Only {item.quantity} remaining (requested: {item_.quantity})."
+                    ),
             )
 
         item.quantity -= item_.quantity

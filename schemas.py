@@ -21,17 +21,6 @@ class UserBasicInfo(BaseModel):
         from_attributes = True
 
 
-class UserResponse(BaseModel):
-    id: int
-    username: str
-    full_name: str
-    balance: int
-    role: str
-
-    class Config:
-        from_attributes = True
-
-
 class RoleUpdateRequest(BaseModel):
     role: str
 
@@ -61,13 +50,6 @@ class MyItemResponse(BaseModel):
     item_id: int
     quantity: int
     item: ItemInfo
-
-    class Config:
-        from_attributes = True
-
-
-class UserBasicInfo(BaseModel):
-    username: str
 
     class Config:
         from_attributes = True
