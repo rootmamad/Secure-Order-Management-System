@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Prepare env file
-        run: cp .env.example .env
+        run: cp .env.example2 .env
 
       - name: Install dependencies
         run: |
