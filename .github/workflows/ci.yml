@@ -7,31 +7,71 @@ on:
     branches: [main]
 
 jobs:
-
   test:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    services:
+      rabbitmq:
+        image: rabbitmq:3
+        ports:
+          - 5672:5672
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install pytest flake8 black
 
-      - name: Run Lint
+      - name: Lint
         run: |
           flake8 .
           black --check .
+      
 
-      - name: Run Tests
-        run: python -m pytest tests
+      - name: Start PostgreSQL (docker run)
+        run: |
+          docker run -d \
+            --name ci-postgres \
+            -e POSTGRES_USER=order_login \
+            -e POSTGRES_PASSWORD=123456789 \
+            -e POSTGRES_DB=order_management \
+            -p 5432:5432 \
+            postgres:16
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -p 5432 && exit 0
+            sleep 2
+          done
+          exit 1
+
+      - name: Run tests
+        env:
+          SECRET_KEY: "rootmamad06"
+          ALGORITHM: "HS256"
+          URl_Database: "postgresql://order_login:123456789@127.0.0.1:5432/order_management"
+          POSTGRES_PASSWORD: "123456789"
+          POSTGRES_USER: "order_login"
+          POSTGRES_DB: "order_management"
+          CELERY_BROKER: "amqp://guest:guest@127.0.0.1:5672//"
+          CELERY_TASK_ALWAYS_EAGER: "true"
+        run: python -m pytest tests/
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker stop ci-postgres
+
+      - name: Remove PostgreSQL container
+        if: always()
+        run: docker rm ci-postgres
 
 
   docker-build:
@@ -39,8 +79,7 @@ jobs:
     needs: test
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Docker compose build
-        run: docker compose up  --build -d
+      - name: Build docker
+        run: docker compose build
