@@ -34,7 +34,19 @@ jobs:
         run: |
           flake8 .
           black --check .
+      - name: Build
+        run: docker compose build
 
+      - name: Start PostgreSQL
+        run: docker compose up -d postgres
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -p 5432 && exit 0
+            sleep 2
+          done
+          exit 1
       - name: Run tests
         env:
           CELERY_TASK_ALWAYS_EAGER: true
